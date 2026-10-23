@@ -1,0 +1,35 @@
+services:
+  db:
+    image: mysql:9.7
+    environment:
+      MYSQL_DATABASE: catdoc
+      MYSQL_USER: catdoc
+      MYSQL_PASSWORD: catdoc
+      MYSQL_ROOT_PASSWORD: root
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-ucatdoc", "-pcatdoc"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/catdoc
+      SPRING_DATASOURCE_USERNAME: catdoc
+      SPRING_DATASOURCE_PASSWORD: catdoc
+    ports:
+      - "18081:18081"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build:
+      context: web
+    ports:
+      - "18080:80"
+    depends_on:
+      - api
