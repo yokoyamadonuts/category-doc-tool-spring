@@ -196,14 +196,14 @@ class VerificationServiceTest {
         void 各文書の成分がFからGへの射なら正しい() {
             var eta = new NaturalTransformation("eta", "η", "F", "G", Map.of("A", "id-A", "B", "id-B"));
 
-            assertThat(VerificationService.verifyNaturalTransformation(eta, f, g, category).isValid()).isTrue();
+            assertThat(VerificationService.verifyNaturalTransformation(eta, f, g, category, category).isValid()).isTrue();
         }
 
         @Test
         void 成分の欠けは誤り() {
             var eta = new NaturalTransformation("eta", "η", "F", "G", Map.of("A", "id-A"));
 
-            assertThat(VerificationService.verifyNaturalTransformation(eta, f, g, category).errors())
+            assertThat(VerificationService.verifyNaturalTransformation(eta, f, g, category, category).errors())
                     .containsExactly("Natural transformation 'eta' is missing component for object 'B'");
         }
 
@@ -212,7 +212,7 @@ class VerificationServiceTest {
             var eta = new NaturalTransformation("eta", "η", "F", "G",
                     Map.of("A", "non-existent-morphism", "B", "id-B"));
 
-            assertThat(VerificationService.verifyNaturalTransformation(eta, f, g, category).errors())
+            assertThat(VerificationService.verifyNaturalTransformation(eta, f, g, category, category).errors())
                     .containsExactly("Natural transformation 'eta' has non-existent component morphism "
                             + "'non-existent-morphism' for object 'A'");
         }
@@ -221,8 +221,32 @@ class VerificationServiceTest {
         void 始点と終点の違う成分は誤り() {
             var eta = new NaturalTransformation("eta", "η", "F", "G", Map.of("A", "wrong", "B", "id-B"));
 
-            assertThat(VerificationService.verifyNaturalTransformation(eta, f, g, category).errors())
+            assertThat(VerificationService.verifyNaturalTransformation(eta, f, g, category, category).errors())
                     .containsExactly("Component η_A has wrong source: expected 'A', got 'B'");
+        }
+
+        @Test
+        void 成分の鍵は元のカテゴリ_成分の射は先のカテゴリから引く() {
+            // 既存版の multi-domain.yaml と同じ形。F と G は sets から types への関手
+            var sets = new Category("sets", "Sets", List.of(obj("set-a")), List.of(Morphism.identity("set-a")));
+            var types = new Category("types", "Types", List.of(obj("type-int")),
+                    List.of(Morphism.identity("type-int")));
+            var typeFunctor = new Functor("F", "F", "sets", "types", Map.of("set-a", "type-int"), Map.of());
+            var eta = new NaturalTransformation("eta", "η", "F", "F", Map.of("set-a", "id-type-int"));
+
+            var result = VerificationService.verifyNaturalTransformation(eta, typeFunctor, typeFunctor, sets, types);
+
+            assertThat(result.errors()).isEmpty();
+        }
+
+        @Test
+        void 元と先のカテゴリが違う関手どうしは誤り() {
+            var other = new Functor("H", "H", "cat", "elsewhere", Map.of("A", "A", "B", "B"), Map.of());
+            var eta = new NaturalTransformation("eta", "η", "F", "H", Map.of("A", "id-A", "B", "id-B"));
+
+            assertThat(VerificationService.verifyNaturalTransformation(eta, f, other, category, category).errors())
+                    .containsExactly("Natural transformation 'eta' connects functors 'F' (cat → cat) "
+                            + "and 'H' (cat → elsewhere) with different categories");
         }
     }
 }

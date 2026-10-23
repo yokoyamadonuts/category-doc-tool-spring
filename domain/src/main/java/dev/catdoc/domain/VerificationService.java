@@ -136,19 +136,30 @@ public final class VerificationService {
         }
     }
 
-    /** 各文書 A について、成分 η_A が F(A) から G(A) への射であることを確かめる。 */
+    /**
+     * F と G が同じ元と先のカテゴリを持ち、元のカテゴリの各文書 A について、
+     * 成分 η_A が先のカテゴリの F(A) から G(A) への射であることを確かめる。
+     */
     public static VerificationResult verifyNaturalTransformation(NaturalTransformation nt, Functor sourceFunctor,
-            Functor targetFunctor, Category category) {
+            Functor targetFunctor, Category source, Category target) {
         var errors = new ArrayList<String>();
 
-        for (var object : category.objects()) {
+        if (!sourceFunctor.sourceCategory().equals(targetFunctor.sourceCategory())
+                || !sourceFunctor.targetCategory().equals(targetFunctor.targetCategory())) {
+            errors.add("Natural transformation '%s' connects functors '%s' (%s → %s) and '%s' (%s → %s) with different categories"
+                    .formatted(nt.id(), sourceFunctor.id(), sourceFunctor.sourceCategory(), sourceFunctor.targetCategory(),
+                            targetFunctor.id(), targetFunctor.sourceCategory(), targetFunctor.targetCategory()));
+            return new VerificationResult(errors, List.of());
+        }
+
+        for (var object : source.objects()) {
             var id = object.id();
             var component = nt.component(id);
             if (component.isEmpty()) {
                 errors.add("Natural transformation '%s' is missing component for object '%s'".formatted(nt.id(), id));
                 continue;
             }
-            var morphism = category.morphism(component.get());
+            var morphism = target.morphism(component.get());
             if (morphism.isEmpty()) {
                 errors.add("Natural transformation '%s' has non-existent component morphism '%s' for object '%s'"
                         .formatted(nt.id(), component.get(), id));
