@@ -1,0 +1,150 @@
+# CatDoc for Spring 設計書
+
+2026年10月23日。[category-doc-tool](https://github.com/yokoyamadonuts/category-doc-tool) の TypeScript 版を、Spring Boot と React で書き直し、画面を足したもの。
+
+## 目的
+
+文書を圏論のオブジェクト、文書どうしの関係を射として扱い、文書群の構造を圏論の公理で検証する。要件から設計、設計からテストへの対応を関手で表し、対応の漏れを見つける。
+
+既存版との違いは2つ。保存先を MySQL にしたことと、ブラウザで構造を見て検証できる画面を足したこと。
+
+## 範囲
+
+作るもの:
+
+- 圏論の検証と経路探索、追跡の表を求めるドメイン
+- API からの取り込み。`category.yaml` と Markdown をまとめた zip を受け取る
+- REST API
+- 画面4種: グラフの表示、検証の結果、経路の探索、追跡の表
+
+作らないもの: CLI、MCP サーバー、画面からの取り込み、公開のデモ環境。
+
+## 構成
+
+docker compose で3つのコンテナを動かす。
+
+| コンテナ | 中身 |
+|---|---|
+| web | React のビルド結果を nginx で配る。`/api` は api に中継する |
+| api | Spring Boot。REST API だけを持つ |
+| db | MySQL |
+
+## 版
+
+2026年10月23日時点の公式情報で確認した。
+
+| 領域 | 版 | 判断 |
+|---|---|---|
+| Java | 25 LTS | 最新は 27 だが、Spring Framework が全面サポートするのは LTS だけ |
+| Spring Boot / Framework | 4.1.2 / 7.0.10 | |
+| 依存の版 | Spring Boot の BOM に従う | 上書きすると組み合わせの保証が外れる |
+| ビルド | Gradle 9.8.2、Kotlin DSL | |
+| DB | MySQL 9.7 LTS | イメージは `mysql:9.7`。Flyway で動かなければ 8.4 LTS に下げる |
+| テスト | JUnit 6、AssertJ、Mockito、Testcontainers 2.0、ArchUnit 1.5 | |
+| API の文書 | springdoc-openapi 3.1 | |
+| 取り込み | Jackson 3 の YAML、commonmark-java 0.31 | |
+| 実行環境 | eclipse-temurin:25-jre-alpine | |
+| TypeScript | 7.0。lint 用に 6.0 を並べて入れる | typescript-eslint が TS 7 に対応していない |
+| 画面 | React 19.3、Vite 8、React Router 8、TanStack Query 5 | |
+| グラフ描画 | @xyflow/react 12、elkjs 0.12 | |
+| 検査とテスト | ESLint 10、Vitest 5、Playwright 1.64 | |
+| Node | 26 | 2026年10月28日に LTS になる |
+| 配信 | nginx:1.30-alpine | |
+
+## API
+
+`openapi.yaml` を正本にする。
+
+- 画面は `openapi-typescript` で型を生成し、`openapi-fetch` で呼ぶ
+- サーバーのコントローラーは手で書く。springdoc の出力と `openapi.yaml` を CI で比べ、ずれたら落とす
+
+1回の取り込みをプロジェクトと呼ぶ。プロジェクトの下に、カテゴリ、文書、関係、関手、自然変換を置く。
+
+| メソッドとパス | 役割 |
+|---|---|
+| `POST /api/projects` | zip を取り込む。`201` と `Location` を返す |
+| `GET /api/projects` | プロジェクトの一覧 |
+| `GET /api/projects/{id}/categories/{categoryId}/graph` | カテゴリの文書と関係 |
+| `GET /api/projects/{id}/objects/{objectId}` | 文書の本文 |
+| `GET /api/projects/{id}/verification` | カテゴリ、関手、自然変換の検証の結果 |
+| `GET /api/projects/{id}/paths?from=&to=` | 2つの文書の間の経路 |
+| `GET /api/projects/{id}/traceability?functors=F,G` | 関手をつないだ追跡の表 |
+
+エラーは RFC 9457 の Problem Details で返す。
+
+| 状況 | 状態 |
+|---|---|
+| パラメータの誤り | 400 |
+| 存在しない | 404 |
+| zip が大きすぎる | 413 |
+| YAML の形式違反、参照切れ | 422。誤りを `errors` 配列に並べる |
+| 想定外 | 500。内部の情報は返さない |
+
+## コードの層
+
+Gradle のサブプロジェクトを2つ置く。
+
+- `domain`: 依存のない素の Java。モデルは record で表し、検証、経路探索、追跡の表を純粋な関数で持つ
+- `api`: Spring Boot。中を3層に分け、依存の向きを ArchUnit で検査する
+  - `application`: ユースケースと、保存のためのインターフェース
+  - `web`: コントローラーと DTO
+  - `infrastructure`: JPA による保存と、YAML と Markdown の読み込み
+
+画面は `web/src/features/` の下に、graph、verification、paths、traceability を置く。
+
+## 取り込み
+
+1. zip を受け取る。全体の大きさ、展開後の合計、ファイルの数に上限を置く。パスを正規化し、`..` を含むものは弾く
+2. `category.yaml` と Markdown の front matter を読む
+3. ドメインのモデルを組み立て、参照の整合性を確かめる
+4. 1つのトランザクションで保存する
+
+## 検証と経路
+
+検証の結果は保存せず、毎回計算する。既存版と同じく、次を確かめる。
+
+- カテゴリ: 恒等射の存在、射の参照の整合性、合成の閉包
+- 関手: 元と先のカテゴリの存在、文書の対応の完全性、対応先の存在、恒等射の保存
+- 自然変換: 可換性
+
+経路は最短経路と、深さ5まで・最大20本の全経路を返す。
+
+## DB
+
+表はプロジェクト、カテゴリ、文書、関係、関手、関手の対応、自然変換、自然変換の成分。外部キーに `ON DELETE CASCADE` を付け、`project_id` に索引を張る。スキーマは Flyway で管理する。
+
+## テスト
+
+外側の E2E から書き、その内側でユニットテストを書いてから実装する、二重のテスト駆動で進める。
+
+| 対象 | 方法 |
+|---|---|
+| E2E | docker compose で全体を立て、例のデータを取り込み、Playwright で画面を通す。機能ごとに最初に書く |
+| ドメイン | 既存版のテストのケースを JUnit のパラメータ化テストに移す |
+| 保存と API | Testcontainers の MySQL 9.7 で、HTTP から通しで確かめる |
+| 仕様との一致 | springdoc の出力と `openapi.yaml` を比べる |
+| 層の依存 | ArchUnit |
+| 画面 | Vitest と Testing Library |
+
+## CI と依存の更新
+
+- GitHub Actions で、バックエンド、画面、仕様の一致、E2E を回す
+- 依存の更新は Renovate で行い、公開から日の浅い版を入れない待ち期間を置く
+
+## 判断の記録
+
+`docs/adr/` に ADR を置く。最初に書くのは次の5つ。
+
+1. Java 25 LTS を選んだ
+2. 依存の版を Spring Boot の BOM に従わせた
+3. MySQL 9.7 LTS を選んだ
+4. API は仕様書を正本にし、生成せずに比べる
+5. 経路探索を DB ではなくドメインで行う
+
+## 進め方
+
+1. 骨組み: リポジトリ、ビルド、docker compose、最初の E2E
+2. ドメインとそのテスト
+3. 取り込み、保存、API
+4. 画面4種
+5. CI、README、ADR
