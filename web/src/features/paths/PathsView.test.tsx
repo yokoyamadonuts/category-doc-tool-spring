@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { screen, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderRoute, stubApi } from '../../test/renderRoute'
 import { BASE, PROJECT_ID, authToDbPaths, infrastructureGraph, project } from '../../test/fixtures'
@@ -56,5 +56,16 @@ describe('PathsView', () => {
     await user.selectOptions(screen.getByLabelText('終点'), '認証サービス')
 
     expect(screen.getByRole('button', { name: '経路を探す' })).toBeDisabled()
+  })
+  it('戻るや進むで URL が変われば、選択の欄も URL に合わせる', async () => {
+    stubApi(replies)
+    const { router } = renderRoute(`/projects/${PROJECT_ID}/paths?category=infrastructure&from=infra-auth&to=infra-db`)
+    await screen.findByRole('region', { name: '最短経路' })
+
+    await act(() => router.navigate(`/projects/${PROJECT_ID}/paths?category=infrastructure&from=infra-db&to=infra-auth`))
+
+    await waitFor(() => expect(screen.getByLabelText('始点')).toHaveValue('infra-db'))
+    expect(screen.getByLabelText('終点')).toHaveValue('infra-auth')
+    expect(await screen.findByText('経路はありません')).toBeInTheDocument()
   })
 })

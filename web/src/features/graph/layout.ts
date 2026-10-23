@@ -93,7 +93,7 @@ export async function layoutGraph(graph: CategoryGraph, elk: ELK = elkInWorker()
       source: m.source,
       target: m.target,
       label: m.name,
-      markerEnd: { type: MarkerType.ArrowClosed },
+      markerEnd: { type: MarkerType.ArrowClosed, width: 18, height: 18 },
       data: routes.get(m.id) ?? { points: [] },
     })),
     omittedIdentities,

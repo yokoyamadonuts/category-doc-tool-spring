@@ -1,5 +1,6 @@
 import { Navigate, type RouteObject } from 'react-router'
 import { Layout } from './Layout'
+import { NotFound, RouteError } from './NotFound'
 import { ProjectList } from './features/projects/ProjectList'
 import { ProjectPage } from './features/projects/ProjectPage'
 import { VerificationView } from './features/verification/VerificationView'
@@ -10,6 +11,7 @@ export const routes: RouteObject[] = [
   {
     path: '/',
     element: <Layout />,
+    errorElement: <RouteError />,
     children: [
       { index: true, element: <ProjectList /> },
       {
@@ -27,6 +29,7 @@ export const routes: RouteObject[] = [
           { path: 'traceability', element: <TraceabilityView /> },
         ],
       },
+      { path: '*', element: <NotFound /> },
     ],
   },
 ]

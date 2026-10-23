@@ -272,3 +272,13 @@ li.invalid .badge {
   background: var(--bg);
   pointer-events: none;
 }
+
+/* 節点はつなげないので、接続点の丸を隠す。丸が矢印の先端に重なって見えなくしていた */
+.react-flow__handle {
+  opacity: 0;
+}
+
+.react-flow__node.selected {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
