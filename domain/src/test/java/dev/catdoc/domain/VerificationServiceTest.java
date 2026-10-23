@@ -135,6 +135,41 @@ class VerificationServiceTest {
         }
 
         @Test
+        void 射の始点と終点を保たない対応は誤り() {
+            // 既存版の multi-domain.yaml では、g: set-b → set-c を is-positive: type-int → type-bool に移していた
+            var functor = new Functor("F", "F", "src", "tgt", Map.of("A", "B'", "B", "B'"),
+                    Map.of("f", "f'"));
+
+            var result = VerificationService.verifyFunctor(functor, source, target);
+
+            assertThat(result.errors()).containsExactly(
+                    "Functor 'F' does not preserve morphism 'f': F(f) = f' goes A' → B', expected B' → B'");
+        }
+
+        @Test
+        void 対応のない射は警告にとどめる() {
+            var functor = new Functor("F", "F", "src", "tgt", Map.of("A", "A'", "B", "B'"),
+                    Map.of("id-A", "id-A'", "id-B", "id-B'"));
+
+            var result = VerificationService.verifyFunctor(functor, source, target);
+
+            assertThat(result.isValid()).isTrue();
+            assertThat(result.warnings()).containsExactly("Morphism 'f' is not mapped by functor 'F'");
+        }
+
+        @Test
+        void 存在しない射への対応は警告にとどめる() {
+            var functor = new Functor("F", "F", "src", "tgt", Map.of("A", "A'", "B", "B'"),
+                    Map.of("id-A", "id-A'", "id-B", "id-B'", "f", "ghost"));
+
+            var result = VerificationService.verifyFunctor(functor, source, target);
+
+            assertThat(result.isValid()).isTrue();
+            assertThat(result.warnings())
+                    .containsExactly("Functor 'F' maps morphism 'f' to non-existent morphism 'ghost'");
+        }
+
+        @Test
         void 恒等射のIDが命名規則に従わなくても保存を確かめる() {
             // 既存版は id-{対象} という命名を前提にしていたため、この誤りを見逃していた
             var src = new Category("src", "Source", List.of(obj("A")), List.of(arrow("loop-a", "A", "A")));

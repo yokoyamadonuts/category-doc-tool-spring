@@ -52,11 +52,12 @@ public final class VerificationService {
     }
 
     /**
-     * 文書の対応の完全性、対応先の存在、恒等射の保存を確かめる。
+     * 文書の対応の完全性、対応先の存在、恒等射の保存、射の始点と終点の保存を確かめる。
      * 恒等射は ID の命名ではなく、始点と終点が同じ射として探す。
      */
     public static VerificationResult verifyFunctor(Functor functor, Category source, Category target) {
         var errors = new ArrayList<String>();
+        var warnings = new ArrayList<String>();
 
         for (var object : source.objects()) {
             if (functor.mapObject(object.id()).isEmpty()) {
@@ -89,7 +90,50 @@ public final class VerificationService {
             }
         }
 
-        return new VerificationResult(errors, List.of());
+        checkMorphismPreservation(functor, source, target, errors, warnings);
+
+        return new VerificationResult(errors, warnings);
+    }
+
+    /**
+     * 射の対応が始点と終点を保つか確かめる。f: A → B なら F(f): F(A) → F(B) でなければならない。
+     * 向きが違えば errors に足す。対応がない、または対応先の射がないときは warnings に足す。
+     * 恒等射は上の恒等射の検査に任せる。
+     */
+    static void checkMorphismPreservation(Functor functor, Category source, Category target,
+            List<String> errors, List<String> warnings) {
+        for (var f : source.morphisms()) {
+            if (f.isIdentity()) {
+                continue;
+            }
+
+            var mappedId = functor.mapMorphism(f.id());
+            if (mappedId.isEmpty()) {
+                warnings.add("Morphism '%s' is not mapped by functor '%s'".formatted(f.id(), functor.id()));
+                continue;
+            }
+
+            var image = target.morphism(mappedId.get());
+            if (image.isEmpty()) {
+                warnings.add("Functor '%s' maps morphism '%s' to non-existent morphism '%s'"
+                        .formatted(functor.id(), f.id(), mappedId.get()));
+                continue;
+            }
+
+            // 文書の対応の誤りは上の検査が出しているので、ここでは重ねて出さない
+            var expectedSource = functor.mapObject(f.source());
+            var expectedTarget = functor.mapObject(f.target());
+            if (expectedSource.isEmpty() || expectedTarget.isEmpty()) {
+                continue;
+            }
+
+            var g = image.get();
+            if (!g.source().equals(expectedSource.get()) || !g.target().equals(expectedTarget.get())) {
+                errors.add("Functor '%s' does not preserve morphism '%s': F(%s) = %s goes %s → %s, expected %s → %s"
+                        .formatted(functor.id(), f.id(), f.id(), g.id(), g.source(), g.target(),
+                                expectedSource.get(), expectedTarget.get()));
+            }
+        }
     }
 
     /** 各文書 A について、成分 η_A が F(A) から G(A) への射であることを確かめる。 */
