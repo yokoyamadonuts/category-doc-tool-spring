@@ -5,11 +5,11 @@ export function ProjectList() {
   const { data, isPending, isError } = useQuery({
     queryKey: ['projects'],
     queryFn: async () => {
-      const { data, error } = await api.GET('/api/projects')
-      if (error !== undefined || data === undefined) {
+      const response = await api.GET('/api/projects')
+      if (response.error !== undefined || response.data === undefined) {
         throw new Error('プロジェクトの一覧を取得できませんでした')
       }
-      return data
+      return response.data
     },
   })
 

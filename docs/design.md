@@ -44,10 +44,10 @@ docker compose で3つのコンテナを動かす。
 | API の文書 | springdoc-openapi 3.1 | |
 | 取り込み | Jackson 3 の YAML、commonmark-java 0.31 | |
 | 実行環境 | eclipse-temurin:25-jre-alpine | |
-| TypeScript | 7.0。lint 用に 6.0 を並べて入れる | typescript-eslint が TS 7 に対応していない |
+| TypeScript | 7.0 | |
 | 画面 | React 19.3、Vite 8、React Router 8、TanStack Query 5 | |
 | グラフ描画 | @xyflow/react 12、elkjs 0.12 | |
-| 検査とテスト | ESLint 10、Vitest 5、Playwright 1.64 | |
+| 検査とテスト | oxlint 1.89、Vitest 5、Playwright 1.64 | oxlint は Vite の公式テンプレートの標準。TypeScript の API を使わないので、TS 7 だけで済む。2026-10-23 に ESLint 10 から切り替えた |
 | Node | 26 | 2026年10月28日に LTS になる |
 | 配信 | nginx:1.30-alpine | |
 
