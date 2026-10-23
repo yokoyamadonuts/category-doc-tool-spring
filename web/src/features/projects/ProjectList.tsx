@@ -1,27 +1,28 @@
-import { useQuery } from '@tanstack/react-query'
-import { api } from '../../api/client'
+import { Link } from 'react-router'
+import { useProjects } from '../../api/queries'
 
 export function ProjectList() {
-  const { data, isPending, isError } = useQuery({
-    queryKey: ['projects'],
-    queryFn: async () => {
-      const response = await api.GET('/api/projects')
-      if (response.error !== undefined || response.data === undefined) {
-        throw new Error('プロジェクトの一覧を取得できませんでした')
-      }
-      return response.data
-    },
-  })
-
-  if (isPending) return <p>読み込み中です</p>
-  if (isError) return <p role="alert">プロジェクトを読み込めませんでした</p>
-  if (data.length === 0) return <p>プロジェクトはまだありません</p>
+  const { data, isPending, isError } = useProjects()
 
   return (
-    <ul>
-      {data.map((project) => (
-        <li key={project.id}>{project.name}</li>
-      ))}
-    </ul>
+    <>
+      <h2>プロジェクト</h2>
+      {isPending ? (
+        <p>読み込み中です</p>
+      ) : isError ? (
+        <p role="alert">プロジェクトを読み込めませんでした</p>
+      ) : data.length === 0 ? (
+        <p>プロジェクトはまだありません</p>
+      ) : (
+        <ul className="project-list">
+          {data.map((project) => (
+            <li key={project.id}>
+              <Link to={`/projects/${project.id}/graph`}>{project.name}</Link>
+              <time dateTime={project.importedAt}>{new Date(project.importedAt).toLocaleString('ja-JP')}</time>
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
   )
 }
