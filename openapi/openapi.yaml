@@ -1,0 +1,47 @@
+openapi: 3.1.0
+info:
+  title: CatDoc API
+  version: 0.1.0
+  description: 文書の構造を圏論の公理で検証する API。
+paths:
+  /api/projects:
+    get:
+      operationId: listProjects
+      summary: 取り込んだプロジェクトの一覧
+      responses:
+        '200':
+          description: 新しい順に並べたプロジェクトの一覧
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProjectSummary'
+components:
+  schemas:
+    ProjectSummary:
+      type: object
+      required: [id, name, importedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        importedAt:
+          type: string
+          format: date-time
+    Problem:
+      type: object
+      description: RFC 9457 の Problem Details
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
