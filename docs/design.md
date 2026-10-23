@@ -137,14 +137,7 @@ Gradle のサブプロジェクトを2つ置く。
 
 ## 判断の記録
 
-`docs/adr/` に ADR を置く。最初に書くのは次の5つ。
-
-1. Java 25 LTS を選んだ
-2. 依存の版を Spring Boot の BOM に従わせた
-3. MySQL 9.7 LTS を選んだ
-4. API は仕様書を正本にし、生成せずに比べる
-5. 経路探索を DB ではなくドメインで行う
-6. 保存を JPA ではなく JdbcClient で行う
+`docs/adr/` に ADR を置く。一覧は [docs/adr/README.md](adr/README.md)。
 
 ## 進め方
 
