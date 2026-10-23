@@ -15,6 +15,23 @@ docker compose up -d --build
 - 画面: http://localhost:18080
 - API: http://localhost:18081/api/projects
 
+例のデータを取り込むには、`category.yaml` と Markdown をフォルダごと zip にして送ります。
+
+```bash
+cd examples && zip -qr /tmp/dev-project.zip dev-project
+curl -i -F file=@/tmp/dev-project.zip http://localhost:18080/api/projects
+```
+
+返った `Location` の下で、検証の結果、経路、追跡の表を引けます。
+
+```bash
+curl http://localhost:18080/api/projects/{id}/verification
+curl "http://localhost:18080/api/projects/{id}/paths?from=infra-k8s-auth&to=infra-database"
+curl "http://localhost:18080/api/projects/{id}/traceability?functors=specify-functor,design-functor"
+```
+
+`category.yaml` の書き方は [examples/](examples/) を見てください。
+
 ## 開発
 
 | 対象 | 必要なもの | テスト |

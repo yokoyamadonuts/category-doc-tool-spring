@@ -1,0 +1,171 @@
+# Mathematics Documentation Example
+# This example demonstrates how to organize mathematical concepts using CatDoc
+
+categories:
+  # Algebra category
+  - id: algebra
+    name: Algebra
+    objects:
+      - id: sets
+        title: Set Theory Fundamentals
+        domain: mathematics
+        metadata:
+          level: foundational
+          prerequisites: []
+      - id: groups
+        title: Group Theory
+        domain: mathematics
+        metadata:
+          level: intermediate
+          prerequisites: [sets]
+      - id: rings
+        title: Ring Theory
+        domain: mathematics
+        metadata:
+          level: intermediate
+          prerequisites: [groups]
+      - id: fields
+        title: Field Theory
+        domain: mathematics
+        metadata:
+          level: advanced
+          prerequisites: [rings]
+      - id: modules
+        title: Module Theory
+        domain: mathematics
+        metadata:
+          level: advanced
+          prerequisites: [rings, groups]
+    morphisms:
+      # Structure morphisms
+      - id: set-to-group
+        name: add-operation
+        source: sets
+        target: groups
+        metadata:
+          description: Adding a group operation to a set
+      - id: group-to-ring
+        name: add-multiplication
+        source: groups
+        target: rings
+        metadata:
+          description: Adding multiplication to form a ring
+      - id: ring-to-field
+        name: add-inverses
+        source: rings
+        target: fields
+        metadata:
+          description: Adding multiplicative inverses
+      - id: ring-to-module
+        name: scalar-action
+        source: rings
+        target: modules
+        metadata:
+          description: Ring acting on an abelian group
+      # Identity morphisms
+      - id: id-sets
+        name: id_sets
+        source: sets
+        target: sets
+        metadata:
+          isIdentity: true
+      - id: id-groups
+        name: id_groups
+        source: groups
+        target: groups
+        metadata:
+          isIdentity: true
+      - id: id-rings
+        name: id_rings
+        source: rings
+        target: rings
+        metadata:
+          isIdentity: true
+      - id: id-fields
+        name: id_fields
+        source: fields
+        target: fields
+        metadata:
+          isIdentity: true
+      - id: id-modules
+        name: id_modules
+        source: modules
+        target: modules
+        metadata:
+          isIdentity: true
+
+  # Topology category
+  - id: topology
+    name: Topology
+    objects:
+      - id: topological-spaces
+        title: Topological Spaces
+        domain: mathematics
+        metadata:
+          level: intermediate
+      - id: metric-spaces
+        title: Metric Spaces
+        domain: mathematics
+        metadata:
+          level: intermediate
+      - id: manifolds
+        title: Manifolds
+        domain: mathematics
+        metadata:
+          level: advanced
+    morphisms:
+      - id: metric-to-topo
+        name: induced-topology
+        source: metric-spaces
+        target: topological-spaces
+        metadata:
+          description: Every metric space induces a topology
+      - id: manifold-to-topo
+        name: underlying-space
+        source: manifolds
+        target: topological-spaces
+        metadata:
+          description: Manifolds are topological spaces with additional structure
+      - id: id-topo
+        name: id_topo
+        source: topological-spaces
+        target: topological-spaces
+        metadata:
+          isIdentity: true
+      - id: id-metric
+        name: id_metric
+        source: metric-spaces
+        target: metric-spaces
+        metadata:
+          isIdentity: true
+      - id: id-manifolds
+        name: id_manifolds
+        source: manifolds
+        target: manifolds
+        metadata:
+          isIdentity: true
+
+functors:
+  # Forgetful functor from Algebra to Sets (conceptual)
+  - id: forgetful-alg
+    name: Forgetful Functor (Algebra)
+    sourceCategory: algebra
+    targetCategory: algebra
+    objectMapping:
+      groups: sets
+      rings: sets
+      fields: sets
+      modules: sets
+      sets: sets
+    morphismMapping:
+      set-to-group: id-sets
+      group-to-ring: id-sets
+      ring-to-field: id-sets
+      ring-to-module: id-sets
+      id-sets: id-sets
+      id-groups: id-sets
+      id-rings: id-sets
+      id-fields: id-sets
+      id-modules: id-sets
+
+naturalTransformations: []

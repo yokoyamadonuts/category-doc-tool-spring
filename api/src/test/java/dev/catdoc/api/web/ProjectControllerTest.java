@@ -3,6 +3,7 @@ package dev.catdoc.api.web;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 
+import dev.catdoc.api.application.ProjectCommandService;
 import dev.catdoc.api.application.ProjectQueryService;
 import dev.catdoc.api.application.ProjectSummary;
 import java.time.Instant;
@@ -22,6 +23,9 @@ class ProjectControllerTest {
 
     @MockitoBean
     ProjectQueryService projectQueryService;
+
+    @MockitoBean
+    ProjectCommandService projectCommandService;
 
     @Test
     void プロジェクトがないときは空の配列を返す() {

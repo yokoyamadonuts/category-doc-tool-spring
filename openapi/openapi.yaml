@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: CatDoc API
-  version: 0.1.0
+  version: 0.2.0
   description: 文書の構造を圏論の公理で検証する API。
 paths:
   /api/projects:
@@ -17,7 +17,217 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/ProjectSummary'
+    post:
+      operationId: importProject
+      summary: category.yaml と Markdown をまとめた zip を取り込む
+      description: |
+        zip の中に category.yaml がちょうど1つあり、その場所を根とする。
+        front matter に id を持つ Markdown は、その id の文書の本文になる。
+        上限は送信10MB、展開後の合計50MB、ファイル1,000個。
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                name:
+                  type: string
+                  maxLength: 200
+                  description: 省略すると zip のファイル名から拡張子を除いたもの
+      responses:
+        '201':
+          description: 取り込んだプロジェクト
+          headers:
+            Location:
+              description: 取り込んだプロジェクトの URL
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectSummary'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '422':
+          $ref: '#/components/responses/ImportRejected'
+  /api/projects/{projectId}:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getProject
+      summary: プロジェクトのカテゴリ、関手、自然変換の一覧
+      responses:
+        '200':
+          description: プロジェクト
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      operationId: deleteProject
+      summary: プロジェクトを消す
+      responses:
+        '204':
+          description: 消した
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/projects/{projectId}/categories/{categoryId}/graph:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+      - name: categoryId
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: getCategoryGraph
+      summary: カテゴリの文書と関係
+      responses:
+        '200':
+          description: カテゴリのグラフ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryGraph'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/projects/{projectId}/objects/{objectId}:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+      - name: objectId
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: getObject
+      summary: 文書の本文とメタデータ
+      responses:
+        '200':
+          description: 文書
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObjectDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/projects/{projectId}/verification:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: verifyProject
+      summary: カテゴリ、関手、自然変換の検証の結果
+      description: 結果は保存せず、呼ぶたびに計算する。
+      responses:
+        '200':
+          description: 検証の結果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerificationReport'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/projects/{projectId}/paths:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: findPaths
+      summary: 同じカテゴリの2つの文書の間の経路
+      description: 恒等射はたどらない。全経路は深さ5まで、短い順に最大20本。
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 最短経路と全経路。経路がなければ空の配列
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PathResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/projects/{projectId}/traceability:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: traceProject
+      summary: 関手をつないだ追跡の表
+      description: 最初の関手の元のカテゴリの文書ごとに、関手を順にたどった対応先を並べる。
+      parameters:
+        - name: functors
+          in: query
+          required: true
+          description: 関手の ID をコンマでつないだもの。前の関手の先と次の関手の元が同じカテゴリであること
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: false
+      responses:
+        '200':
+          description: 追跡の表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TraceabilityTable'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
 components:
+  parameters:
+    ProjectId:
+      name: projectId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  responses:
+    BadRequest:
+      description: パラメータの誤り
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    NotFound:
+      description: 見つからない
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    PayloadTooLarge:
+      description: zip が上限を超えた
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    ImportRejected:
+      description: YAML の形式違反や参照切れ。誤りを errors に並べる
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
   schemas:
     ProjectSummary:
       type: object
@@ -31,6 +241,210 @@ components:
         importedAt:
           type: string
           format: date-time
+    ProjectDetail:
+      type: object
+      required: [id, name, importedAt, categories, functors, naturalTransformations]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        importedAt:
+          type: string
+          format: date-time
+        categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/CategorySummary'
+        functors:
+          type: array
+          items:
+            $ref: '#/components/schemas/FunctorSummary'
+        naturalTransformations:
+          type: array
+          items:
+            $ref: '#/components/schemas/NaturalTransformationSummary'
+    CategorySummary:
+      type: object
+      required: [id, name, objectCount, morphismCount]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        objectCount:
+          type: integer
+        morphismCount:
+          type: integer
+    FunctorSummary:
+      type: object
+      required: [id, name, sourceCategory, targetCategory]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        sourceCategory:
+          type: string
+        targetCategory:
+          type: string
+    NaturalTransformationSummary:
+      type: object
+      required: [id, name, sourceFunctor, targetFunctor]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        sourceFunctor:
+          type: string
+        targetFunctor:
+          type: string
+    CategoryGraph:
+      type: object
+      required: [id, name, objects, morphisms]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        objects:
+          type: array
+          items:
+            $ref: '#/components/schemas/ObjectSummary'
+        morphisms:
+          type: array
+          items:
+            $ref: '#/components/schemas/MorphismView'
+    ObjectSummary:
+      type: object
+      required: [id, title, domain]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        domain:
+          type: string
+    MorphismView:
+      type: object
+      required: [id, name, source, target, identity]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        source:
+          type: string
+        target:
+          type: string
+        identity:
+          type: boolean
+          description: 始点と終点が同じ射
+    ObjectDetail:
+      type: object
+      required: [id, title, domain, categoryId, metadata, content]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        domain:
+          type: string
+        categoryId:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+        content:
+          type: string
+          description: Markdown の本文。front matter は含まない。対応する Markdown がなければ空文字
+    VerificationReport:
+      type: object
+      required: [valid, categories, functors, naturalTransformations]
+      properties:
+        valid:
+          type: boolean
+          description: すべての項目に誤りがない。警告は数えない
+        categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/VerificationEntry'
+        functors:
+          type: array
+          items:
+            $ref: '#/components/schemas/VerificationEntry'
+        naturalTransformations:
+          type: array
+          items:
+            $ref: '#/components/schemas/VerificationEntry'
+    VerificationEntry:
+      type: object
+      required: [id, name, valid, errors, warnings]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        valid:
+          type: boolean
+        errors:
+          type: array
+          items:
+            type: string
+        warnings:
+          type: array
+          items:
+            type: string
+    PathResult:
+      type: object
+      required: [from, to, categoryId, shortest, all]
+      properties:
+        from:
+          type: string
+        to:
+          type: string
+        categoryId:
+          type: string
+        shortest:
+          type: array
+          items:
+            $ref: '#/components/schemas/MorphismView'
+        all:
+          type: array
+          items:
+            type: array
+            items:
+              $ref: '#/components/schemas/MorphismView'
+    TraceabilityTable:
+      type: object
+      required: [functors, rows]
+      properties:
+        functors:
+          type: array
+          items:
+            $ref: '#/components/schemas/FunctorSummary'
+        rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/TraceabilityRow'
+    TraceabilityRow:
+      type: object
+      required: [objectId, title, mappedObjectIds, complete]
+      properties:
+        objectId:
+          type: string
+        title:
+          type: string
+        mappedObjectIds:
+          type: array
+          description: 関手を順にたどって届いた対応先。対応が切れたところで終わる
+          items:
+            type: string
+        complete:
+          type: boolean
+          description: 最後の関手まで届いた
     Problem:
       type: object
       description: RFC 9457 の Problem Details
@@ -45,3 +459,8 @@ components:
           type: string
         instance:
           type: string
+        errors:
+          type: array
+          description: 422 のときだけ。取り込みの誤りをすべて並べる
+          items:
+            type: string

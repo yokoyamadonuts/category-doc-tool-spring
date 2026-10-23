@@ -14,6 +14,138 @@ export interface paths {
         /** 取り込んだプロジェクトの一覧 */
         get: operations["listProjects"];
         put?: never;
+        /**
+         * category.yaml と Markdown をまとめた zip を取り込む
+         * @description zip の中に category.yaml がちょうど1つあり、その場所を根とする。
+         *     front matter に id を持つ Markdown は、その id の文書の本文になる。
+         *     上限は送信10MB、展開後の合計50MB、ファイル1,000個。
+         */
+        post: operations["importProject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{projectId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** プロジェクトのカテゴリ、関手、自然変換の一覧 */
+        get: operations["getProject"];
+        put?: never;
+        post?: never;
+        /** プロジェクトを消す */
+        delete: operations["deleteProject"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{projectId}/categories/{categoryId}/graph": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: components["parameters"]["ProjectId"];
+                categoryId: string;
+            };
+            cookie?: never;
+        };
+        /** カテゴリの文書と関係 */
+        get: operations["getCategoryGraph"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{projectId}/objects/{objectId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: components["parameters"]["ProjectId"];
+                objectId: string;
+            };
+            cookie?: never;
+        };
+        /** 文書の本文とメタデータ */
+        get: operations["getObject"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{projectId}/verification": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * カテゴリ、関手、自然変換の検証の結果
+         * @description 結果は保存せず、呼ぶたびに計算する。
+         */
+        get: operations["verifyProject"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{projectId}/paths": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * 同じカテゴリの2つの文書の間の経路
+         * @description 恒等射はたどらない。全経路は深さ5まで、短い順に最大20本。
+         */
+        get: operations["findPaths"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{projectId}/traceability": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * 関手をつないだ追跡の表
+         * @description 最初の関手の元のカテゴリの文書ごとに、関手を順にたどった対応先を並べる。
+         */
+        get: operations["traceProject"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -32,6 +164,97 @@ export interface components {
             /** Format: date-time */
             importedAt: string;
         };
+        ProjectDetail: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** Format: date-time */
+            importedAt: string;
+            categories: components["schemas"]["CategorySummary"][];
+            functors: components["schemas"]["FunctorSummary"][];
+            naturalTransformations: components["schemas"]["NaturalTransformationSummary"][];
+        };
+        CategorySummary: {
+            id: string;
+            name: string;
+            objectCount: number;
+            morphismCount: number;
+        };
+        FunctorSummary: {
+            id: string;
+            name: string;
+            sourceCategory: string;
+            targetCategory: string;
+        };
+        NaturalTransformationSummary: {
+            id: string;
+            name: string;
+            sourceFunctor: string;
+            targetFunctor: string;
+        };
+        CategoryGraph: {
+            id: string;
+            name: string;
+            objects: components["schemas"]["ObjectSummary"][];
+            morphisms: components["schemas"]["MorphismView"][];
+        };
+        ObjectSummary: {
+            id: string;
+            title: string;
+            domain: string;
+        };
+        MorphismView: {
+            id: string;
+            name: string;
+            source: string;
+            target: string;
+            /** @description 始点と終点が同じ射 */
+            identity: boolean;
+        };
+        ObjectDetail: {
+            id: string;
+            title: string;
+            domain: string;
+            categoryId: string;
+            metadata: {
+                [key: string]: unknown;
+            };
+            /** @description Markdown の本文。front matter は含まない。対応する Markdown がなければ空文字 */
+            content: string;
+        };
+        VerificationReport: {
+            /** @description すべての項目に誤りがない。警告は数えない */
+            valid: boolean;
+            categories: components["schemas"]["VerificationEntry"][];
+            functors: components["schemas"]["VerificationEntry"][];
+            naturalTransformations: components["schemas"]["VerificationEntry"][];
+        };
+        VerificationEntry: {
+            id: string;
+            name: string;
+            valid: boolean;
+            errors: string[];
+            warnings: string[];
+        };
+        PathResult: {
+            from: string;
+            to: string;
+            categoryId: string;
+            shortest: components["schemas"]["MorphismView"][];
+            all: components["schemas"]["MorphismView"][][];
+        };
+        TraceabilityTable: {
+            functors: components["schemas"]["FunctorSummary"][];
+            rows: components["schemas"]["TraceabilityRow"][];
+        };
+        TraceabilityRow: {
+            objectId: string;
+            title: string;
+            /** @description 関手を順にたどって届いた対応先。対応が切れたところで終わる */
+            mappedObjectIds: string[];
+            /** @description 最後の関手まで届いた */
+            complete: boolean;
+        };
         /** @description RFC 9457 の Problem Details */
         Problem: {
             type?: string;
@@ -39,10 +262,51 @@ export interface components {
             status?: number;
             detail?: string;
             instance?: string;
+            /** @description 422 のときだけ。取り込みの誤りをすべて並べる */
+            errors?: string[];
         };
     };
-    responses: never;
-    parameters: never;
+    responses: {
+        /** @description パラメータの誤り */
+        BadRequest: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
+        /** @description 見つからない */
+        NotFound: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
+        /** @description zip が上限を超えた */
+        PayloadTooLarge: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
+        /** @description YAML の形式違反や参照切れ。誤りを errors に並べる */
+        ImportRejected: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
+    };
+    parameters: {
+        ProjectId: string;
+    };
     requestBodies: never;
     headers: never;
     pathItems: never;
@@ -67,6 +331,209 @@ export interface operations {
                     "application/json": components["schemas"]["ProjectSummary"][];
                 };
             };
+        };
+    };
+    importProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                    /** @description 省略すると zip のファイル名から拡張子を除いたもの */
+                    name?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description 取り込んだプロジェクト */
+            201: {
+                headers: {
+                    /** @description 取り込んだプロジェクトの URL */
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectSummary"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            413: components["responses"]["PayloadTooLarge"];
+            422: components["responses"]["ImportRejected"];
+        };
+    };
+    getProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description プロジェクト */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectDetail"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    deleteProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 消した */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getCategoryGraph: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: components["parameters"]["ProjectId"];
+                categoryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description カテゴリのグラフ */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategoryGraph"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getObject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: components["parameters"]["ProjectId"];
+                objectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 文書 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ObjectDetail"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    verifyProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 検証の結果 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VerificationReport"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    findPaths: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path: {
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 最短経路と全経路。経路がなければ空の配列 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PathResult"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    traceProject: {
+        parameters: {
+            query: {
+                /** @description 関手の ID をコンマでつないだもの。前の関手の先と次の関手の元が同じカテゴリであること */
+                functors: string[];
+            };
+            header?: never;
+            path: {
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 追跡の表 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TraceabilityTable"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
         };
     };
 }

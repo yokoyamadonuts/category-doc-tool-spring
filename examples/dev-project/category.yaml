@@ -1,0 +1,280 @@
+# 開発プロジェクト ドキュメント整合性管理
+# 要件定義・仕様書・設計書・内部仕様書・インフラストラクチャを
+# 圏論の概念で整理し、関手（Functor）で整合性を担保する例
+
+categories:
+  # ==========================================================================
+  # 要件定義（Requirements）
+  # ==========================================================================
+  - id: requirements
+    name: Requirements
+    objects:
+      - id: req-user-management
+        title: ユーザー管理要件
+        domain: requirements
+        metadata:
+          priority: high
+          stakeholder: プロダクトオーナー
+          status: approved
+      - id: req-auth-system
+        title: 認証システム要件
+        domain: requirements
+        metadata:
+          priority: high
+          stakeholder: セキュリティチーム
+          status: approved
+    morphisms:
+      - id: req-auth-depends-user
+        name: depends-on
+        source: req-auth-system
+        target: req-user-management
+        metadata:
+          description: 認証はユーザー管理に依存
+      - id: id-req-user
+        name: id_user
+        source: req-user-management
+        target: req-user-management
+        metadata:
+          isIdentity: true
+      - id: id-req-auth
+        name: id_auth
+        source: req-auth-system
+        target: req-auth-system
+        metadata:
+          isIdentity: true
+
+  # ==========================================================================
+  # 仕様書（Specifications）
+  # ==========================================================================
+  - id: specifications
+    name: Specifications
+    objects:
+      - id: spec-user-api
+        title: ユーザーAPI仕様
+        domain: specifications
+        metadata:
+          version: "1.0"
+          format: OpenAPI
+          status: reviewed
+      - id: spec-auth-api
+        title: 認証API仕様
+        domain: specifications
+        metadata:
+          version: "1.0"
+          format: OpenAPI
+          status: reviewed
+    morphisms:
+      - id: spec-auth-uses-user
+        name: uses
+        source: spec-auth-api
+        target: spec-user-api
+        metadata:
+          description: 認証APIはユーザーAPIを参照
+      - id: id-spec-user
+        name: id_user_api
+        source: spec-user-api
+        target: spec-user-api
+        metadata:
+          isIdentity: true
+      - id: id-spec-auth
+        name: id_auth_api
+        source: spec-auth-api
+        target: spec-auth-api
+        metadata:
+          isIdentity: true
+
+  # ==========================================================================
+  # 設計書（Design）
+  # ==========================================================================
+  - id: design
+    name: Design
+    objects:
+      - id: design-user-service
+        title: ユーザーサービス設計
+        domain: design
+        metadata:
+          pattern: Clean Architecture
+          layer: Application
+      - id: design-auth-service
+        title: 認証サービス設計
+        domain: design
+        metadata:
+          pattern: Clean Architecture
+          layer: Application
+    morphisms:
+      - id: design-auth-calls-user
+        name: calls
+        source: design-auth-service
+        target: design-user-service
+        metadata:
+          description: 認証サービスはユーザーサービスを呼び出す
+      - id: id-design-user
+        name: id_user_svc
+        source: design-user-service
+        target: design-user-service
+        metadata:
+          isIdentity: true
+      - id: id-design-auth
+        name: id_auth_svc
+        source: design-auth-service
+        target: design-auth-service
+        metadata:
+          isIdentity: true
+
+  # ==========================================================================
+  # 内部仕様書（InternalSpec）
+  # ==========================================================================
+  - id: internal-spec
+    name: InternalSpec
+    objects:
+      - id: internal-user-repository
+        title: UserRepositoryモジュール仕様
+        domain: internal-spec
+        metadata:
+          module: infrastructure/repositories
+          language: TypeScript
+      - id: internal-jwt-handler
+        title: JWTHandlerモジュール仕様
+        domain: internal-spec
+        metadata:
+          module: infrastructure/auth
+          language: TypeScript
+    morphisms:
+      - id: internal-jwt-uses-user
+        name: imports
+        source: internal-jwt-handler
+        target: internal-user-repository
+        metadata:
+          description: JWTハンドラはUserRepositoryを使用
+      - id: id-internal-user-repo
+        name: id_user_repo
+        source: internal-user-repository
+        target: internal-user-repository
+        metadata:
+          isIdentity: true
+      - id: id-internal-jwt
+        name: id_jwt
+        source: internal-jwt-handler
+        target: internal-jwt-handler
+        metadata:
+          isIdentity: true
+
+  # ==========================================================================
+  # インフラストラクチャ（Infrastructure）
+  # ==========================================================================
+  - id: infrastructure
+    name: Infrastructure
+    objects:
+      - id: infra-k8s-user
+        title: ユーザーサービスKubernetes設定
+        domain: infrastructure
+        metadata:
+          type: Deployment
+          namespace: production
+      - id: infra-k8s-auth
+        title: 認証サービスKubernetes設定
+        domain: infrastructure
+        metadata:
+          type: Deployment
+          namespace: production
+      - id: infra-database
+        title: PostgreSQLデータベース
+        domain: infrastructure
+        metadata:
+          type: StatefulSet
+          namespace: production
+    morphisms:
+      - id: infra-user-uses-db
+        name: connects
+        source: infra-k8s-user
+        target: infra-database
+        metadata:
+          description: ユーザーサービスはDBに接続
+      - id: infra-auth-uses-db
+        name: connects
+        source: infra-k8s-auth
+        target: infra-database
+        metadata:
+          description: 認証サービスはDBに接続
+      - id: infra-auth-uses-user
+        name: depends
+        source: infra-k8s-auth
+        target: infra-k8s-user
+        metadata:
+          description: 認証サービスはユーザーサービスに依存
+      - id: id-infra-user
+        name: id_k8s_user
+        source: infra-k8s-user
+        target: infra-k8s-user
+        metadata:
+          isIdentity: true
+      - id: id-infra-auth
+        name: id_k8s_auth
+        source: infra-k8s-auth
+        target: infra-k8s-auth
+        metadata:
+          isIdentity: true
+      - id: id-infra-db
+        name: id_db
+        source: infra-database
+        target: infra-database
+        metadata:
+          isIdentity: true
+
+# ==============================================================================
+# 関手（Functors）- ドキュメント層間の整合性マッピング
+# ==============================================================================
+functors:
+  # 要件定義 → 仕様書: 各要件が仕様書でカバーされているか
+  - id: specify-functor
+    name: SpecifyFunctor (要件→仕様)
+    sourceCategory: requirements
+    targetCategory: specifications
+    objectMapping:
+      req-user-management: spec-user-api
+      req-auth-system: spec-auth-api
+    morphismMapping:
+      req-auth-depends-user: spec-auth-uses-user
+      id-req-user: id-spec-user
+      id-req-auth: id-spec-auth
+
+  # 仕様書 → 設計書: 各仕様が設計に反映されているか
+  - id: design-functor
+    name: DesignFunctor (仕様→設計)
+    sourceCategory: specifications
+    targetCategory: design
+    objectMapping:
+      spec-user-api: design-user-service
+      spec-auth-api: design-auth-service
+    morphismMapping:
+      spec-auth-uses-user: design-auth-calls-user
+      id-spec-user: id-design-user
+      id-spec-auth: id-design-auth
+
+  # 設計書 → 内部仕様書: 各設計が実装仕様に反映されているか
+  - id: implement-functor
+    name: ImplementFunctor (設計→内部仕様)
+    sourceCategory: design
+    targetCategory: internal-spec
+    objectMapping:
+      design-user-service: internal-user-repository
+      design-auth-service: internal-jwt-handler
+    morphismMapping:
+      design-auth-calls-user: internal-jwt-uses-user
+      id-design-user: id-internal-user-repo
+      id-design-auth: id-internal-jwt
+
+  # 内部仕様書 → インフラ: 各実装がデプロイされているか
+  - id: deploy-functor
+    name: DeployFunctor (内部仕様→インフラ)
+    sourceCategory: internal-spec
+    targetCategory: infrastructure
+    objectMapping:
+      internal-user-repository: infra-k8s-user
+      internal-jwt-handler: infra-k8s-auth
+    morphismMapping:
+      internal-jwt-uses-user: infra-auth-uses-user
+      id-internal-user-repo: id-infra-user
+      id-internal-jwt: id-infra-auth
+
+naturalTransformations: []

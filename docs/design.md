@@ -42,7 +42,7 @@ docker compose で3つのコンテナを動かす。
 | DB | MySQL 9.7 LTS | イメージは `mysql:9.7`。Flyway で動かなければ 8.4 LTS に下げる |
 | テスト | JUnit 6、AssertJ、Mockito、Testcontainers 2.0、ArchUnit 1.5 | |
 | API の文書 | springdoc-openapi 3.1 | |
-| 取り込み | Jackson 3 の YAML、commonmark-java 0.31 | |
+| 取り込み | Jackson 3 の YAML | front matter も YAML として読む。本文は描画しないので Markdown の解析器は使わない |
 | 実行環境 | eclipse-temurin:25-jre-alpine | |
 | TypeScript | 7.0 | |
 | 画面 | React 19.3、Vite 8、React Router 8、TanStack Query 5 | |
@@ -62,12 +62,14 @@ docker compose で3つのコンテナを動かす。
 
 | メソッドとパス | 役割 |
 |---|---|
-| `POST /api/projects` | zip を取り込む。`201` と `Location` を返す |
+| `POST /api/projects` | zip を取り込む。`201` と、相対の `Location` を返す |
 | `GET /api/projects` | プロジェクトの一覧 |
+| `GET /api/projects/{id}` | カテゴリ、関手、自然変換の一覧 |
+| `DELETE /api/projects/{id}` | プロジェクトを消す |
 | `GET /api/projects/{id}/categories/{categoryId}/graph` | カテゴリの文書と関係 |
 | `GET /api/projects/{id}/objects/{objectId}` | 文書の本文 |
 | `GET /api/projects/{id}/verification` | カテゴリ、関手、自然変換の検証の結果 |
-| `GET /api/projects/{id}/paths?from=&to=` | 2つの文書の間の経路 |
+| `GET /api/projects/{id}/paths?from=&to=` | 同じカテゴリの2つの文書の間の経路 |
 | `GET /api/projects/{id}/traceability?functors=F,G` | 関手をつないだ追跡の表 |
 
 エラーは RFC 9457 の Problem Details で返す。
@@ -88,15 +90,15 @@ Gradle のサブプロジェクトを2つ置く。
 - `api`: Spring Boot。中を3層に分け、依存の向きを ArchUnit で検査する
   - `application`: ユースケースと、保存のためのインターフェース
   - `web`: コントローラーと DTO
-  - `infrastructure`: JPA による保存と、YAML と Markdown の読み込み
+  - `infrastructure`: JdbcClient による保存と、zip、YAML、Markdown の読み込み
 
 画面は `web/src/features/` の下に、graph、verification、paths、traceability を置く。
 
 ## 取り込み
 
-1. zip を受け取る。全体の大きさ、展開後の合計、ファイルの数に上限を置く。パスを正規化し、`..` を含むものは弾く
-2. `category.yaml` と Markdown の front matter を読む
-3. ドメインのモデルを組み立て、参照の整合性を確かめる
+1. zip を受け取る。送信10MB、展開後の合計50MB、ファイル1,000個を上限にする。展開した量は実際に読んだ量で数える。絶対パス、`..`、`\` を含む名前は弾く
+2. `category.yaml` がちょうど1つあり、その場所を根とする。front matter に `id` を持つ Markdown を、その文書の本文にする
+3. ドメインのモデルを組み立て、保存と参照に要る構造を確かめる。必須の項目、ID の重複、存在しないカテゴリや関手への参照を弾く。圏論の公理の違反は弾かず、検証で見せる
 4. 1つのトランザクションで保存する
 
 ## 検証と経路
@@ -113,7 +115,7 @@ Gradle のサブプロジェクトを2つ置く。
 
 ## DB
 
-表はプロジェクト、カテゴリ、文書、関係、関手、関手の対応、自然変換、自然変換の成分。外部キーに `ON DELETE CASCADE` を付け、`project_id` に索引を張る。スキーマは Flyway で管理する。
+表はプロジェクト、カテゴリ、文書、関係、関手、関手の対応、自然変換、自然変換の成分。主キーは `project_id` から始める。外部キーは各表から `projects` への1本だけにして `ON DELETE CASCADE` を付け、表どうしの参照は取り込みで確かめる。ID の列は大文字と小文字を区別する `utf8mb4_bin` にする。スキーマは Flyway で管理する。
 
 ## テスト
 
@@ -142,6 +144,7 @@ Gradle のサブプロジェクトを2つ置く。
 3. MySQL 9.7 LTS を選んだ
 4. API は仕様書を正本にし、生成せずに比べる
 5. 経路探索を DB ではなくドメインで行う
+6. 保存を JPA ではなく JdbcClient で行う
 
 ## 進め方
 
