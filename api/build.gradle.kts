@@ -35,9 +35,11 @@ dependencies {
 	testImplementation("org.springframework.boot:spring-boot-testcontainers")
 	testImplementation("org.testcontainers:testcontainers-junit-jupiter")
 	testImplementation("org.testcontainers:testcontainers-mysql")
+	testImplementation("tools.jackson.dataformat:jackson-dataformat-yaml")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
 tasks.withType<Test> {
 	useJUnitPlatform()
+	systemProperty("openapi.spec", rootProject.file("openapi/openapi.yaml").absolutePath)
 }
